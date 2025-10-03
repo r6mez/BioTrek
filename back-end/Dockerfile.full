@@ -1,0 +1,145 @@
+# Multi-stage Dockerfile for full chatbot functionality
+# This version includes all Python ML dependencies for complete RAG capabilities
+
+# Stage 1: Python dependencies builder
+FROM python:3.12-slim as python-builder
+
+# Install system dependencies for Python compilation
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    g++ \
+    cmake \
+    pkg-config \
+    libffi-dev \
+    libssl-dev \
+    libxml2-dev \
+    libxslt-dev \
+    libjpeg-dev \
+    libpng-dev \
+    zlib1g-dev \
+    libtiff-dev \
+    libfreetype6-dev \
+    liblcms2-dev \
+    libwebp-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libxcb1-dev \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy requirements and install Python dependencies in stages for better caching
+COPY chatbot/requirements-optimized.txt /tmp/requirements-optimized.txt
+
+# Install Python packages in virtual environment with staged approach
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Install in stages for better build caching
+RUN pip install --no-cache-dir \
+    python-dotenv==1.1.1 \
+    requests==2.32.5 \
+    "pydantic>=2.7.4" \
+    "PyYAML>=5.3"
+
+RUN pip install --no-cache-dir \
+    langchain==0.3.27 \
+    langchain_core==0.3.77 \
+    langchain_text_splitters==0.3.11 \
+    langchain_groq==0.3.8
+
+RUN pip install --no-cache-dir \
+    langchain_community==0.3.30 \
+    langchain_openai==0.3.34 \
+    langchain_chroma==0.2.6 \
+    langchain_huggingface==0.3.1
+
+RUN pip install --no-cache-dir \
+    beautifulsoup4==4.14.2 \
+    bs4==0.0.2 \
+    pypdf==6.1.1 \
+    arxiv==2.2.0 \
+    wikipedia==1.4.0
+
+RUN pip install --no-cache-dir \
+    chromadb==1.1.0 \
+    faiss-cpu==1.12.0
+
+# Install ML libraries (most time-consuming)
+RUN pip install --no-cache-dir \
+    "torch>=1.11.0" \
+    sentence_transformers==5.1.1 \
+    transformers==4.56.2
+
+RUN pip install --no-cache-dir \
+    "huggingface_hub[hf_xet]==0.35.3"
+
+# Install complex system-dependent packages last
+RUN pip install --no-cache-dir \
+    pymupdf==1.26.4
+
+# Optional web frameworks
+RUN pip install --no-cache-dir \
+    fastapi==0.118.0 \
+    uvicorn==0.37.0 \
+    streamlit==1.50.0 \
+    ipykernel==6.30.1
+
+# Stage 2: Node.js application
+FROM node:22.19.0-slim as node-builder
+
+# Install Node.js dependencies
+RUN npm i -g @nestjs/cli typescript ts-node
+
+COPY package*.json /tmp/app/
+RUN cd /tmp/app && npm install
+
+# Stage 3: Final runtime image
+FROM node:22.19.0-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-venv \
+    bash \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python virtual environment from builder
+COPY --from=python-builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy Node.js dependencies
+COPY --from=node-builder /tmp/app/node_modules /usr/src/app/node_modules
+
+# Copy application code
+COPY . /usr/src/app
+COPY ./wait-for-it.sh /opt/wait-for-it.sh
+COPY ./startup.relational.dev.sh /opt/startup.relational.dev.sh
+
+# Set permissions
+RUN chmod +x /opt/wait-for-it.sh && \
+    chmod +x /opt/startup.relational.dev.sh && \
+    chmod +x /usr/src/app/chatbot/chatbot_api.py && \
+    chmod +x /usr/src/app/chatbot/simple_chatbot_api.py
+
+# Fix line endings
+RUN sed -i 's/\r//g' /opt/wait-for-it.sh && \
+    sed -i 's/\r//g' /opt/startup.relational.dev.sh
+
+WORKDIR /usr/src/app
+
+# Create .env if it doesn't exist
+RUN if [ ! -f .env ]; then cp env-example-relational .env; fi
+
+# Build the application
+RUN npm run build
+
+# Expose port
+EXPOSE 3000
+
+CMD ["/opt/startup.relational.dev.sh"]
