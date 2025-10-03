@@ -7,6 +7,7 @@ import {
   Bar,
   PieChart,
   Pie,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -31,19 +32,34 @@ export default function Home() {
   };
 
   // Data for charts
-  const articlesData = [
-    { name: "Biology", value: 250 },
-    { name: "Medicine", value: 180 },
-    { name: "Astronomy", value: 100 },
-    { name: "Others", value: 70 },
+  const publicationsData = [
+    { name: "Animal Studies", value: 202 },
+    { name: "Plant Biology", value: 94 },
+    { name: "Other", value: 79 },
+    { name: "Molecular Biology", value: 60 },
+    { name: "Microbiology", value: 51 },
+    { name: "Human Health", value: 46 },
+    { name: "Space Environment", value: 33 },
+    { name: "Radiation Effects", value: 31 },
+    { name: "Technology", value: 6 },
   ];
 
-  const datasetData = [
-    { year: "2018", datasets: 20 },
-    { year: "2019", datasets: 35 },
-    { year: "2020", datasets: 50 },
-    { year: "2021", datasets: 80 },
-    { year: "2022", datasets: 120 },
+  const publicationsPercentages = [
+    { name: "Animal Studies", percent: 33.6 },
+    { name: "Plant Biology", percent: 15.6 },
+    { name: "Other", percent: 13.1 },
+    { name: "Molecular Biology", percent: 10.0 },
+    { name: "Microbiology", percent: 8.5 },
+    { name: "Human Health", percent: 7.6 },
+    { name: "Space Environment", percent: 5.5 },
+    { name: "Radiation Effects", percent: 5.1 },
+    { name: "Technology", percent: 1.0 },
+  ];
+
+  // Colors for the charts
+  const COLORS = [
+    "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", 
+    "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B739"
   ];
 
   return (
@@ -200,39 +216,53 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             {/* Pie Chart */}
             <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-700 hover:border-blue-500 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-1">
-              <h3 className="text-xl font-semibold mb-4 text-center text-blue-300">
-                Articles by Field
+              <h3 className="text-base font-semibold mb-4 text-center text-blue-300">
+                Publications by Field (%)
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={articlesData}
-                    dataKey="value"
+                    data={publicationsPercentages}
+                    dataKey="percent"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={100}
-                    fill="#8884d8"
-                    label
-                  />
-                  <Tooltip />
-                  <Legend />
+                    outerRadius={90}
+                    label={(entry) => `${entry.percent}%`}
+                    labelStyle={{ fontSize: "11px", fontWeight: "bold" }}
+                  >
+                    {publicationsPercentages.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ fontSize: "12px" }} />
+                  <Legend wrapperStyle={{ fontSize: "11px" }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
 
             {/* Bar Chart */}
             <div className="bg-gray-900 p-6 rounded-2xl shadow-lg border border-gray-700 hover:border-green-500 transition-all duration-300 hover:shadow-2xl hover:shadow-green-500/20 hover:-translate-y-1">
-              <h3 className="text-xl font-semibold mb-4 text-center text-green-300">
-                Datasets Over Time
+              <h3 className="text-base font-semibold mb-4 text-center text-green-300">
+                Publications Count by Field
               </h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={datasetData}>
-                  <XAxis dataKey="year" stroke="#fff" />
-                  <YAxis stroke="#fff" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="datasets" fill="#82ca9d" />
+                <BarChart data={publicationsData}>
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#fff" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                    style={{ fontSize: "10px" }}
+                  />
+                  <YAxis stroke="#fff" style={{ fontSize: "11px" }} />
+                  <Tooltip contentStyle={{ fontSize: "12px" }} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                    {publicationsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
