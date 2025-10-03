@@ -7,12 +7,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github-dark.css';
+import ChartRenderer from "../components/ChartRenderer";
+import { extractChartsFromText, extractChartFromMetadata, parseChartDirective } from "../utils/dataParser";
 
 export default function AIChat() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([
-    { sender: "AI", text: "Hello! I am your NASA BioTrek AI assistant. I can help you with space exploration, NASA missions, and answer your questions about the cosmos based on NASA research documents. How can I assist you today?" },
+    { sender: "AI", text: "Hello! I am your NASA BioTrek AI assistant. I can help you with space exploration, NASA missions, and answer your questions about the cosmos based on NASA research documents.\n\n✨ **New Feature:** I can now visualize data with interactive charts! Try asking questions about statistics, trends, or comparisons.\n\n💡 Type `/test-chart` to see a demo of the visualization feature.\n\nHow can I assist you today?" },
   ]);
   const [input, setInput] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
@@ -111,12 +113,33 @@ export default function AIChat() {
       const chatHistory = await chatbotService.getChatHistoryById(chatId);
       
       // Convert chat history messages to the format used by the UI
-      const formattedMessages = chatHistory.messages.map(msg => ({
-        sender: msg.role === 'user' ? 'User' : 'AI',
-        text: msg.content,
-        sources: msg.metadata?.sources || [],
-        metadata: msg.metadata,
-      }));
+      const formattedMessages = chatHistory.messages.map(msg => {
+        const message = {
+          sender: msg.role === 'user' ? 'User' : 'AI',
+          text: msg.content,
+          sources: msg.metadata?.sources || [],
+          metadata: msg.metadata,
+        };
+        
+        // Extract charts from historical messages
+        if (msg.role === 'ai') {
+          const charts = extractChartsFromText(msg.content);
+          const chartDirectives = parseChartDirective(msg.content);
+          const metadataChart = extractChartFromMetadata(msg.metadata);
+          
+          const allCharts = [
+            ...chartDirectives,
+            ...(metadataChart ? [metadataChart] : []),
+            ...charts
+          ];
+          
+          if (allCharts.length > 0) {
+            message.charts = allCharts;
+          }
+        }
+        
+        return message;
+      });
 
       setMessages(formattedMessages.length > 0 ? formattedMessages : [
         { sender: "AI", text: "Hello! I am your NASA BioTrek AI assistant. How can I help you today?" }
@@ -220,6 +243,49 @@ export default function AIChat() {
     if (!input.trim()) return;
     
     const userMessage = input.trim();
+    
+    // Check for test commands
+    if (userMessage.toLowerCase() === '/test-chart' || userMessage.toLowerCase() === '/chart-test') {
+      setMessages(prev => [...prev, { sender: "User", text: userMessage }]);
+      setInput("");
+      
+      // Show test visualization
+      const testCharts = [
+        {
+          data: [
+            { month: "Jan", missions: 8 },
+            { month: "Feb", missions: 12 },
+            { month: "Mar", missions: 15 },
+            { month: "Apr", missions: 18 },
+            { month: "May", missions: 22 },
+            { month: "Jun", missions: 25 }
+          ],
+          title: "NASA Missions by Month (Test Data)",
+          type: "line"
+        },
+        {
+          data: [
+            { category: "Research", value: 35 },
+            { category: "Development", value: 30 },
+            { category: "Operations", value: 25 },
+            { category: "Training", value: 10 }
+          ],
+          title: "Budget Distribution (Test Data)",
+          type: "pie"
+        }
+      ];
+      
+      setMessages(prev => [
+        ...prev,
+        {
+          sender: "AI",
+          text: "**Chart Visualization Test**\n\nHere are some sample visualizations to demonstrate the charting capability:\n\n1. **Line Chart** - Shows mission trends over time\n2. **Pie Chart** - Shows budget distribution by category\n\nTo get real charts, ask questions that involve data or statistics. For example:\n- \"Show me mission statistics\"\n- \"Compare space agency budgets\"\n- \"Display temperature trends\"\n\nOr visit `/chart-test` page for more examples!",
+          charts: testCharts
+        }
+      ]);
+      return;
+    }
+    
     setMessages(prev => [...prev, { sender: "User", text: userMessage }]);
     setInput("");
     setIsTyping(true);
@@ -239,12 +305,28 @@ export default function AIChat() {
       // Ask question with chat history ID
       const response = await chatbotService.askQuestion(userMessage, chatId);
       
+      // Extract charts from response
+      const charts = extractChartsFromText(response.answer);
+      const chartDirectives = parseChartDirective(response.answer);
+      const metadataChart = extractChartFromMetadata(response);
+      
+      const allCharts = [
+        ...chartDirectives,
+        ...(metadataChart ? [metadataChart] : []),
+        ...charts
+      ];
+      
+      // Debug logging
+      console.log('Chatbot Response:', response);
+      console.log('Extracted charts:', allCharts);
+      
       setMessages(prev => [
         ...prev,
         { 
           sender: "AI", 
           text: response.answer,
-          sources: response.sources || []
+          sources: response.sources || [],
+          charts: allCharts.length > 0 ? allCharts : undefined
         },
       ]);
       
@@ -648,35 +730,63 @@ export default function AIChat() {
                   )}
                   <div className="flex-1">
                     {msg.sender === "AI" && !msg.isError ? (
-                      <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight]}
-                          components={{
-                            // Custom components for better styling
-                            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                            ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-                            li: ({ children }) => <li className="text-gray-200">{children}</li>,
-                            h1: ({ children }) => <h1 className="text-lg font-bold mb-2 text-blue-300">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-base font-bold mb-2 text-blue-300">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-sm font-bold mb-1 text-blue-300">{children}</h3>,
-                            code: ({ inline, children }) => 
-                              inline ? (
-                                <code className="bg-gray-700 text-blue-300 px-1 py-0.5 rounded text-xs font-mono">{children}</code>
-                              ) : (
-                                <code className="block bg-gray-700 text-gray-200 p-2 rounded text-xs font-mono overflow-x-auto">{children}</code>
+                      <>
+                        <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeHighlight]}
+                            components={{
+                              // Custom components for better styling
+                              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                              ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                              ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                              li: ({ children }) => <li className="text-gray-200">{children}</li>,
+                              h1: ({ children }) => <h1 className="text-lg font-bold mb-2 text-blue-300">{children}</h1>,
+                              h2: ({ children }) => <h2 className="text-base font-bold mb-2 text-blue-300">{children}</h2>,
+                              h3: ({ children }) => <h3 className="text-sm font-bold mb-1 text-blue-300">{children}</h3>,
+                              code: ({ inline, children }) => 
+                                inline ? (
+                                  <code className="bg-gray-700 text-blue-300 px-1 py-0.5 rounded text-xs font-mono">{children}</code>
+                                ) : (
+                                  <code className="block bg-gray-700 text-gray-200 p-2 rounded text-xs font-mono overflow-x-auto">{children}</code>
+                                ),
+                              pre: ({ children }) => <pre className="bg-gray-700 p-2 rounded mb-2 overflow-x-auto">{children}</pre>,
+                              blockquote: ({ children }) => <blockquote className="border-l-4 border-blue-500 pl-3 italic text-gray-300 mb-2">{children}</blockquote>,
+                              strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
+                              em: ({ children }) => <em className="italic text-gray-300">{children}</em>,
+                              a: ({ href, children }) => <a href={href} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                              // Table components for proper rendering
+                              table: ({ children }) => (
+                                <div className="overflow-x-auto my-4">
+                                  <table className="min-w-full border border-gray-600 rounded-lg">
+                                    {children}
+                                  </table>
+                                </div>
                               ),
-                            pre: ({ children }) => <pre className="bg-gray-700 p-2 rounded mb-2 overflow-x-auto">{children}</pre>,
-                            blockquote: ({ children }) => <blockquote className="border-l-4 border-blue-500 pl-3 italic text-gray-300 mb-2">{children}</blockquote>,
-                            strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
-                            em: ({ children }) => <em className="italic text-gray-300">{children}</em>,
-                            a: ({ href, children }) => <a href={href} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">{children}</a>,
-                          }}
-                        >
-                          {msg.text}
-                        </ReactMarkdown>
-                      </div>
+                              thead: ({ children }) => <thead className="bg-gray-700">{children}</thead>,
+                              tbody: ({ children }) => <tbody className="bg-gray-800">{children}</tbody>,
+                              tr: ({ children }) => <tr className="border-b border-gray-600">{children}</tr>,
+                              th: ({ children }) => <th className="px-4 py-2 text-left text-xs font-semibold text-blue-300 border-r border-gray-600 last:border-r-0">{children}</th>,
+                              td: ({ children }) => <td className="px-4 py-2 text-sm text-gray-200 border-r border-gray-600 last:border-r-0">{children}</td>,
+                            }}
+                          >
+                            {msg.text}
+                          </ReactMarkdown>
+                        </div>
+                        {/* Render charts if available */}
+                        {msg.charts && msg.charts.length > 0 && (
+                          <div className="mt-3">
+                            {msg.charts.map((chart, idx) => (
+                              <ChartRenderer
+                                key={idx}
+                                data={chart.data}
+                                title={chart.title}
+                                chartType={chart.type}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                     )}

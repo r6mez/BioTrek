@@ -22,7 +22,8 @@ def initialize_chatbot():
     """Initialize the chatbot components"""
     try:
         db = load_or_build_vector_store()
-        chain = setup_retrieval_qa(db, max_words=600)
+        # Lower similarity threshold for better retrieval
+        chain = setup_retrieval_qa(db, max_words=800, similarity_score_threshold=0.25)
         return db, chain
     except Exception as e:
         print(json.dumps({"error": f"Initialization error: {str(e)}"}))

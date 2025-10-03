@@ -5,6 +5,7 @@ import Login from "./Pages/Login";
 import AIChat from "./Pages/AIChat";
 import Dashboard from "./Pages/Dashboard";
 import Register from "./Pages/Register";
+import ChartTest from "./Pages/ChartTest";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/AIChat" element={<AIChat />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/chart-test" element={<ChartTest />} />
         </Routes>
       </Router>
     </AuthProvider>

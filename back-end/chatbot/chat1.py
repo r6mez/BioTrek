@@ -19,8 +19,12 @@ CHROMA_DIR.mkdir(exist_ok=True)
 embedding_function = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # --- Utility ---
-def split_text(text, chunk_size=500, chunk_overlap=100):
-    splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+def split_text(text, chunk_size=1000, chunk_overlap=200):
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, 
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", ". ", " ", ""]
+    )
     return splitter.split_text(text)
 
 # --- Loaders ---

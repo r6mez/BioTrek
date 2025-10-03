@@ -56,5 +56,26 @@ export class ChatbotResponseDto {
     example: 1250,
   })
   processingTime?: number;
+
+  @ApiProperty({
+    description: 'Chart data for visualization',
+    example: [{ name: 'A', value: 100 }, { name: 'B', value: 200 }],
+    required: false,
+  })
+  chartData?: any[];
+
+  @ApiProperty({
+    description: 'Type of chart to render (line, bar, pie, area, scatter)',
+    example: 'bar',
+    required: false,
+  })
+  chartType?: string;
+
+  @ApiProperty({
+    description: 'Title for the chart',
+    example: 'Monthly Statistics',
+    required: false,
+  })
+  chartTitle?: string;
 }
 
