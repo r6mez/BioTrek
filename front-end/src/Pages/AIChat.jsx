@@ -14,7 +14,7 @@ export default function AIChat() {
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([
-    { sender: "AI", text: "Hello! I am your NASA BioTrek AI assistant. I can help you with space exploration, NASA missions, and answer your questions about the cosmos based on NASA research documents.\n\n✨ **New Feature:** I can now visualize data with interactive charts! Try asking questions about statistics, trends, or comparisons.\n\n💡 Type `/test-chart` to see a demo of the visualization feature.\n\nHow can I assist you today?" },
+    { sender: "AI", text: "Hello! I am your NASA BioTrek AI assistant. I can help you with space exploration, NASA missions, and answer your questions about the cosmos based on NASA research documents.\n\nHow can I assist you today?" },
   ]);
   const [input, setInput] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
