@@ -25,6 +25,19 @@ export default function AIChat() {
   const [error, setError] = useState(null);
   const outputRef = useRef(null);
   
+  // Topic data from our database
+  const topicData = [
+    { name: "Animal Studies", percent: 33.6, color: "#FF6B6B", icon: "🐾" },
+    { name: "Plant Biology", percent: 15.6, color: "#4ECDC4", icon: "🌱" },
+    { name: "Molecular Biology", percent: 10.0, color: "#FFA07A", icon: "🧬" },
+    { name: "Microbiology", percent: 8.5, color: "#98D8C8", icon: "🦠" },
+    { name: "Human Health", percent: 7.6, color: "#F7DC6F", icon: "❤️" },
+    { name: "Space Environment", percent: 5.5, color: "#BB8FCE", icon: "🚀" },
+    { name: "Radiation Effects", percent: 5.1, color: "#85C1E2", icon: "☢️" },
+    { name: "Technology", percent: 1.0, color: "#F8B739", icon: "⚙️" },
+    { name: "Other", percent: 13.1, color: "#45B7D1", icon: "📚" },
+  ];
+  
   // Chat history states
   const [chatHistories, setChatHistories] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
@@ -232,6 +245,81 @@ export default function AIChat() {
       return message;
     }
     return message.substring(0, maxLength).trim() + '...';
+  };
+
+  // Handle topic card click
+  const handleTopicClick = async (topic) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    
+    // Create a custom prompt for this topic
+    const customPrompt = `Please provide a comprehensive overview of ${topic.name} research in space biology from NASA's database. Include key findings, statistics, trends, and visualize the data with charts where possible. Show me the most important research papers and their main conclusions in this field.`;
+    
+    // Start a new chat
+    setMessages([
+      { sender: "AI", text: "Hello! I am your NASA BioTrek AI assistant. How can I help you today?" },
+      { sender: "User", text: customPrompt }
+    ]);
+    setInput("");
+    setIsTyping(true);
+    setError(null);
+    
+    try {
+      // Create a new chat with topic as title
+      const title = `${topic.name} Research Overview`;
+      const newChat = await chatbotService.createChatHistory(title);
+      const chatId = newChat.id;
+      setCurrentChatId(chatId);
+      setChatHistories([newChat, ...chatHistories]);
+
+      // Ask question with chat history ID
+      const response = await chatbotService.askQuestion(customPrompt, chatId);
+      
+      // Extract charts from response
+      const charts = extractChartsFromText(response.answer);
+      const chartDirectives = parseChartDirective(response.answer);
+      const metadataChart = extractChartFromMetadata(response);
+      
+      const allCharts = [
+        ...chartDirectives,
+        ...(metadataChart ? [metadataChart] : []),
+        ...charts
+      ];
+      
+      setMessages(prev => [
+        ...prev,
+        { 
+          sender: "AI", 
+          text: response.answer,
+          sources: response.sources || [],
+          charts: allCharts.length > 0 ? allCharts : undefined
+        },
+      ]);
+      
+      if (response.sources && response.sources.length > 0) {
+        setCurrentSources(response.sources);
+      }
+
+      // Refresh chat histories
+      const histories = await chatbotService.getChatHistories();
+      setChatHistories(histories);
+      
+    } catch (error) {
+      console.error('Chatbot error:', error);
+      setError(error.message);
+      setMessages(prev => [
+        ...prev,
+        { 
+          sender: "AI", 
+          text: `I apologize, but I encountered an error: ${error.message}. Please try again or contact support if the issue persists.`,
+          isError: true
+        },
+      ]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   // Send user message
@@ -700,6 +788,97 @@ export default function AIChat() {
               </div>
             </div>
           )}
+          
+          {/* Topic Cards - Show only at the start of a new chat */}
+          {messages.length === 1 && messages[0].sender === "AI" && (
+            <div className="w-full max-w-6xl animate-fade-in px-4 sm:px-6 mb-8">
+              <div className="mb-6 text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                  Explore Research Topics
+                </h2>
+                <p className="text-gray-400 text-sm sm:text-base">
+                  Click on any topic to discover insights from NASA's space biology research
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {topicData.map((topic, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleTopicClick(topic)}
+                    disabled={!isAuthenticated}
+                    className={`group relative overflow-hidden rounded-2xl p-6 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl ${
+                      !isAuthenticated 
+                        ? 'bg-gray-700/30 cursor-not-allowed opacity-50' 
+                        : 'bg-gray-800/50 hover:-translate-y-1 cursor-pointer'
+                    } border-2 border-transparent hover:border-opacity-50`}
+                    style={{
+                      borderColor: !isAuthenticated ? 'transparent' : `${topic.color}40`,
+                      boxShadow: !isAuthenticated ? 'none' : `0 0 30px -10px ${topic.color}40`
+                    }}
+                  >
+                    {/* Gradient Background Effect */}
+                    <div 
+                      className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300"
+                      style={{
+                        background: `linear-gradient(135deg, ${topic.color}40 0%, transparent 100%)`
+                      }}
+                    />
+                    
+                    {/* Content */}
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="text-4xl">{topic.icon}</div>
+                        <div 
+                          className="text-3xl font-bold"
+                          style={{ color: topic.color }}
+                        >
+                          {topic.percent}%
+                        </div>
+                      </div>
+                      
+                      <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-opacity-90 transition-colors">
+                        {topic.name}
+                      </h3>
+                      
+                      {/* Progress Bar */}
+                      <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className="h-full rounded-full transition-all duration-500 group-hover:animate-pulse"
+                          style={{ 
+                            width: `${topic.percent}%`,
+                            backgroundColor: topic.color,
+                            boxShadow: `0 0 10px ${topic.color}80`
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="mt-3 text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
+                        Click to explore research
+                      </div>
+                    </div>
+                    
+                    {/* Decorative Corner */}
+                    <div 
+                      className="absolute top-0 right-0 w-20 h-20 opacity-10 group-hover:opacity-20 transition-opacity"
+                      style={{
+                        background: `radial-gradient(circle at top right, ${topic.color} 0%, transparent 70%)`
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+              
+              {!isAuthenticated && (
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-yellow-400">
+                    Please log in to explore research topics
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          
           {messages.map((msg, idx) => (
             <div
               key={idx}
