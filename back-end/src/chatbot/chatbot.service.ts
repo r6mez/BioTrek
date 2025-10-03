@@ -334,6 +334,7 @@ export class ChatbotService {
     const chatbotConfig = this.configService.get('chatbot', { infer: true });
     
     if (!chatbotConfig || !chatbotConfig.groqApiKey) {
+      this.logger.warn('Chatbot configuration missing or GROQ API key not set');
       return {
         status: 'error',
         initialized: false,
@@ -343,45 +344,74 @@ export class ChatbotService {
     try {
       const pythonPath = chatbotConfig.pythonPath;
       const chatbotPath = join(process.cwd(), chatbotConfig.chatbotPath);
-      // Use simple_chatbot_api.py for Docker environments, full chatbot_api.py for local development
-      const isDocker = process.env.NODE_ENV === 'production' || process.platform === 'linux';
-      const scriptName = isDocker ? 'simple_chatbot_api.py' : 'chatbot_api.py';
-      const scriptPath = join(chatbotPath, scriptName);
+      // Always use chatbot_api.py as it's the only script available
+      const scriptPath = join(chatbotPath, 'chatbot_api.py');
+
+      this.logger.debug(`Health check: Testing Python at ${pythonPath} with script ${scriptPath}`);
 
       // Test if we can run the init command
-      const result = await new Promise<boolean>((resolve) => {
+      const result = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+        let stdout = '';
+        let stderr = '';
+
         const testProcess = spawn(pythonPath, [scriptPath, 'init'], {
           cwd: chatbotPath,
           env: {
             ...process.env,
             GROQ_API_KEY: chatbotConfig.groqApiKey,
             PATH: process.env.PATH + ':/Users/ramez.medhat/.asdf/shims',
+            TOKENIZERS_PARALLELISM: 'false',
           },
           stdio: ['pipe', 'pipe', 'pipe'],
         });
 
+        // Increased timeout to 30 seconds to allow for initialization
         const timeout = setTimeout(() => {
           testProcess.kill();
-          resolve(false);
-        }, 10000); // 10 second timeout
+          this.logger.warn('Health check timed out after 30 seconds');
+          resolve({ success: false, error: 'Timeout after 30 seconds' });
+        }, 30000);
+
+        testProcess.stdout?.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        testProcess.stderr?.on('data', (data) => {
+          stderr += data.toString();
+        });
 
         testProcess.on('close', (code) => {
           clearTimeout(timeout);
-          resolve(code === 0);
+          
+          if (code === 0) {
+            this.logger.debug('Health check passed');
+            resolve({ success: true });
+          } else {
+            this.logger.warn(`Health check failed with exit code ${code}`);
+            this.logger.debug(`stdout: ${stdout}`);
+            this.logger.debug(`stderr: ${stderr}`);
+            resolve({ success: false, error: stderr || `Process exited with code ${code}` });
+          }
         });
 
-        testProcess.on('error', (error) => {
+        testProcess.on('error', (error: any) => {
           clearTimeout(timeout);
-          this.logger.warn(`Python health check failed: ${error.message}`);
-          resolve(false);
+          if (error.code === 'ENOENT') {
+            this.logger.error(`Python executable not found at ${pythonPath}`);
+            resolve({ success: false, error: 'Python executable not found' });
+          } else {
+            this.logger.error(`Python health check error: ${error.message}`);
+            resolve({ success: false, error: error.message });
+          }
         });
       });
 
       return {
-        status: result ? 'healthy' : 'error',
-        initialized: result,
+        status: result.success ? 'healthy' : 'error',
+        initialized: result.success,
       };
     } catch (error) {
+      this.logger.error(`Health check exception: ${error.message}`);
       return {
         status: 'error',
         initialized: false,
