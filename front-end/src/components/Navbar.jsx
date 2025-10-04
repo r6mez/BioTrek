@@ -43,11 +43,11 @@ function Navbar() {
   }, []);
 
   return (
-    <nav className="w-full z-50 absolute top-0 left-0 text-white">
-      <div className="max-w-7xl mx-auto">
+    <nav className="w-full z-50 relative bg-gray-900 border-b border-gray-700/50 text-white">
+      <div className="w-full">
         {/* Transparent Background */}
         <div>
-          <div className="flex justify-between items-center p-4 md:p-6">
+          <div className="flex justify-between items-center px-4 md:px-6 py-4 md:py-6">
             {/* Left Side - Logo + Action Buttons */}
             <div className="flex items-center gap-6">
               <NavLink to="/" className="hover:opacity-80 transition-opacity duration-300">

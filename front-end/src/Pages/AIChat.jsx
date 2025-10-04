@@ -158,7 +158,10 @@ export default function AIChat() {
         { sender: "AI", text: "Hello! I am your NASA BioTrek AI assistant. How can I help you today?" }
       ]);
       setCurrentChatId(chatId);
-      setShowHistorySidebar(false);
+      // Only close sidebar on mobile devices
+      if (window.innerWidth < 1024) {
+        setShowHistorySidebar(false);
+      }
     } catch (error) {
       console.error('Failed to load chat history:', error);
       setError('Failed to load chat history');
@@ -522,24 +525,24 @@ export default function AIChat() {
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <>
+      <div className="flex flex-col h-screen bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 overflow-hidden">
         <Navbar />
-        <div className="flex flex-col h-screen w-screen relative overflow-hidden bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 text-white font-poppins pt-20">
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-300">Loading...</p>
-            </div>
+        <div className="flex-1 text-white font-poppins flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-300">Loading...</p>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 overflow-hidden">
       <Navbar />
-      <div className="flex h-screen w-screen relative bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 text-white font-poppins pt-20 overflow-hidden">
+      {/* Main container positioned below navbar */}
+      <div className="flex-1 text-white font-poppins overflow-hidden">
+        <div className="flex h-full w-full relative">
         
         {/* Mobile Overlay */}
         {showHistorySidebar && (
@@ -551,11 +554,10 @@ export default function AIChat() {
         
         {/* History Sidebar */}
         <div className={`
-          fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto
+          fixed lg:relative top-0 bottom-0 left-0 z-50 lg:z-auto
           transition-all duration-300 
           border-r border-gray-700/50 bg-gray-800/95 lg:bg-gray-800/30 backdrop-blur-sm 
           flex flex-col
-          mt-20 lg:mt-0
           ${showHistorySidebar ? 'w-80 translate-x-0' : 'w-0 lg:w-0 -translate-x-full lg:-translate-x-0'}
         `}>
           {showHistorySidebar && (
@@ -569,7 +571,43 @@ export default function AIChat() {
             </button>
           )}
           <div className={`flex-1 flex flex-col min-h-0 ${showHistorySidebar ? 'opacity-100' : 'opacity-0 lg:opacity-0 pointer-events-none'} transition-opacity duration-300`}>
+              {/* Chatbot Status */}
               <div className="p-4 border-b border-gray-700/50">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 flex-1">
+                    {!healthStatus ? (
+                      <>
+                        <div className="w-2 h-2 rounded-full flex-shrink-0 bg-gray-500 animate-pulse"></div>
+                        <span className="text-xs text-gray-300 truncate">
+                          Loading...
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                          healthStatus.status === 'healthy' ? 'bg-green-500' :
+                          healthStatus.status === 'initializing' ? 'bg-yellow-500 animate-pulse' :
+                          'bg-red-500'
+                        }`}></div>
+                        <span className="text-xs text-gray-300 truncate">
+                          Chatbot: {healthStatus.status === 'healthy' ? 'Ready' : 
+                           healthStatus.status === 'initializing' ? 'Initializing...' : 
+                           'Error'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {/* Close Sidebar Button */}
+                  <button
+                    onClick={() => setShowHistorySidebar(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                    title="Hide sidebar"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                    </svg>
+                  </button>
+                </div>
                 <h2 className="text-lg font-semibold mb-3">Chat History</h2>
                 <button
                   onClick={startNewChat}
@@ -707,56 +745,31 @@ export default function AIChat() {
 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col min-w-0 relative">
-          {/* Health Status Bar */}
-          {healthStatus && (
-            <div className="bg-gray-800/50 border-b border-gray-700/50 px-3 sm:px-6 py-2 flex-shrink-0">
-              <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                  {/* History Toggle Button */}
-                  <button
-                    onClick={() => setShowHistorySidebar(!showHistorySidebar)}
-                    className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
-                    title={showHistorySidebar ? "Hide chat history" : "Show chat history"}
-                  >
-                    {showHistorySidebar ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                    )}
-                  </button>
-                  
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      healthStatus.status === 'healthy' ? 'bg-green-500' :
-                      healthStatus.status === 'initializing' ? 'bg-yellow-500' :
-                      'bg-red-500'
-                    }`}></div>
-                    <span className="text-xs sm:text-sm text-gray-300 truncate">
-                      <span className="hidden sm:inline">Chatbot Status: </span>
-                      {healthStatus.status === 'healthy' ? 'Ready' : 
-                       healthStatus.status === 'initializing' ? 'Initializing...' : 
-                       'Error'}
-                    </span>
-                  </div>
-                </div>
-                {currentSources.length > 0 && (
-                  <button
-                    onClick={toggleSources}
-                    className="text-xs sm:text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1 flex-shrink-0"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span className="hidden sm:inline">Sources ({currentSources.length})</span>
-                    <span className="sm:hidden">({currentSources.length})</span>
-                  </button>
-                )}
-              </div>
-            </div>
+          {/* Toggle Button for Sidebar - Only visible when sidebar is hidden */}
+          {!showHistorySidebar && (
+            <button
+              onClick={() => setShowHistorySidebar(true)}
+              className="absolute top-4 left-4 z-20 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white p-2 rounded-lg shadow-lg transition-colors border border-gray-700"
+              title="Show chat history"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+          )}
+          
+          {/* Sources Toggle Button - Floating when sources available */}
+          {currentSources.length > 0 && (
+            <button
+              onClick={toggleSources}
+              className="absolute top-4 right-4 z-20 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
+              title="View sources"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span className="text-sm">Sources ({currentSources.length})</span>
+            </button>
           )}
 
       {/* Main Content */}
@@ -1251,7 +1264,8 @@ export default function AIChat() {
         )}
       </div>
         </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
