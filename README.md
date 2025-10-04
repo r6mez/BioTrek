@@ -8,6 +8,7 @@
 docker-compose up --build 
 pip install -r back-end/chatbot/requirement.txt
 npm install
+npm run migration:run
 npm run seed:run:relational
 npm run start:dev
 
