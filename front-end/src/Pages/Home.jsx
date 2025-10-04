@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Navbar from "../components/Navbar";
+import logo from "../assets/logo.png";
 import {
   BarChart,
   Bar,
@@ -113,37 +114,16 @@ export default function Home() {
               </div>
 
               {/* Right illustration */}
-              <div className="relative flex-1 max-w-lg flex justify-center items-center">
-                {/* Planet with enhanced glowing effect */}
-                <div className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-60 lg:h-60 rounded-full bg-gradient-to-br from-blue-400 via-blue-600 to-purple-800 shadow-[0_0_80px_30px_rgba(59,130,246,0.3),0_0_120px_40px_rgba(147,51,234,0.2)] animate-spin-slow">
-                  {/* Planet surface details */}
-                  <div className="absolute inset-4 rounded-full bg-gradient-to-br from-blue-300 to-purple-600 opacity-60"></div>
-                  <div className="absolute top-8 left-8 w-4 h-4 rounded-full bg-blue-200 opacity-40"></div>
-                  <div className="absolute bottom-12 right-12 w-3 h-3 rounded-full bg-purple-200 opacity-50"></div>
-                  <div className="absolute top-16 right-8 w-2 h-2 rounded-full bg-cyan-200 opacity-60"></div>
-                </div>
-
-                {/* Planet Orbit Icon */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 64 64"
-                  className="absolute w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 bottom-8 sm:bottom-10 animate-float text-blue-400"
-                  fill="currentColor"
-                >
-                  <circle cx="32" cy="32" r="14" />
-                  <path
-                    d="M8 28c10 8 38 8 48 0"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    d="M8 36c10 8 38 8 48 0"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                </svg>
+              <div className="relative flex-1 max-w-4xl flex justify-center items-center">
+                {/* Logo Icon with Glow */}
+                <img
+                  src={logo}
+                  alt="BioTrek Logo"
+                  className="w-96 h-96 sm:w-[30rem] sm:h-[30rem] lg:w-[36rem] lg:h-[36rem] animate-float object-contain drop-shadow-[0_0_50px_rgba(59,130,246,0.8)] drop-shadow-[0_0_80px_rgba(147,51,234,0.6)]"
+                  style={{
+                    filter: 'drop-shadow(0 0 60px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 100px rgba(147, 51, 234, 0.7))'
+                  }}
+                />
               </div>
             </div>
           </div>
